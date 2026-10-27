@@ -1,0 +1,10 @@
+{
+  "name": "supermarkttycoon",
+  "private": true,
+  "scripts": {
+    "build": "./build.sh",
+    "dev": "./build.sh && wrangler dev",
+    "deploy": "./build.sh && wrangler deploy"
+  },
+  "devDependencies": { "wrangler": "^4" }
+}
