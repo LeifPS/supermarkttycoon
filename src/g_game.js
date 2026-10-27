@@ -42,10 +42,10 @@ function act(a) {
     case "open": sfx("tap"); openPage(p[1], p[2]); return;
     case "tab": sfx("tap"); UI.tab[p[1]] = p[2]; renderAll(true); return;
     case "dept": sfx("tap"); openDept(p[1]); return;
-    case "lv": return done(levelUp(p[1]), "up", "Nicht genug Geld");
+    case "lv": { const b = msCount(S.dept[p[1]].lvl), ok = levelUp(p[1]); if (ok && msCount(S.dept[p[1]].lvl) > b) { toast("Meilenstein! " + DEPT_BY[p[1]].name + " bekommt ein neues Aussehen"); R.sig = ""; } return done(ok, "up", "Nicht genug Geld"); }
     case "hire": return done(hire(p[1]), "buy", "Nicht genug Geld");
     case "proc": return done(procUp(p[1]), "buy", "Nicht genug Geld");
-    case "skip": return done(skipMilestone(p[1]), "up", "Nicht genug Edelsteine");
+    case "skip": { const ok = skipMilestone(p[1]); if (ok) toast("Meilenstein! " + DEPT_BY[p[1]].name + " bekommt ein neues Aussehen"); return done(ok, "up", "Nicht genug Edelsteine"); }
     case "mode": S.mode = +p[1]; sfx("tap"); renderAll(true); return;
     case "mup": return done(upMgr(p[1]), "up", "Dir fehlen Karten oder Forschungspunkte");
     case "park": return done(buyPark(), "buy", "Nicht genug Geld");
