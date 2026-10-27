@@ -166,6 +166,7 @@ function fmt(n) {
   if (!isFinite(n)) return "∞";
   if (n < 0) return "-" + fmt(-n);
   if (n < 1000) return n < 10 && n % 1 ? trimNum(n, 2) : String(Math.floor(n));
+  if (n >= 1e42) { const e = Math.floor(Math.log10(n)); return trimNum(n / Math.pow(10, e), 2) + "e" + e; }
   let i = Math.min(SUF.length - 1, Math.floor(Math.log10(n) / 3));
   let v = n / Math.pow(1000, i);
   let d = v >= 100 ? 0 : v >= 10 ? 1 : 2;
@@ -202,7 +203,7 @@ function mixHex(a, b, t) {
 const TESTMODUS = true; // true: €- und Werbe-Buttons gewähren sofort (kein echtes Bezahlen)
 
 // Meilensteine: ab diesen Stufen verdoppelt sich der Preis
-const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 900, 1000];
+const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 900, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000]; // 23 Meilensteine = 24 Aussehen
 const LVL_GROWTH = 1.09;      // Kostenwachstum pro Stufe
 const PROC_GROWTH = 1.32;     // Kostenwachstum "Verarbeiten"
 const CAR_DWELL = 55;         // Sekunden, die ein Auto parkt
@@ -213,13 +214,13 @@ const MGR_MAX = 10;
 const LOCS = [
   { id: "kiosk", name: "Kiosk am Weg", desc: "Ein kleiner Stand mit Schotterplatz. Hier fängt alles an.", cost: 0, mult: 1, maxLvl: 100, maxPark: 3, maxAd: 14, maxKasse: 2, stock: 100,
     ground: "#cfe3a0", ground2: "#bcd78c", lot: "#d8c9a0", lotLine: "#a89870", wall: "#c98a5a", roof: "#b8473a", floor: "#f3e2a0", floor2: "#ead58a", sign: "KIOSK" },
-  { id: "dorf", name: "Dorfladen", desc: "Der Laden im Ortskern mit Markise und Backstube.", cost: 600000, mult: 3, maxLvl: 250, maxPark: 5, maxAd: 30, maxKasse: 3, stock: 150,
+  { id: "dorf", name: "Dorfladen", desc: "Der Laden im Ortskern mit Markise und Backstube.", cost: 600000, mult: 3, maxLvl: 400, maxPark: 5, maxAd: 30, maxKasse: 3, stock: 150,
     ground: "#d9e8a8", ground2: "#c6dc94", lot: "#c9c4b4", lotLine: "#f7efd6", wall: "#e6b86a", roof: "#c0392b", floor: "#f6ead0", floor2: "#eadcb8", sign: "DORFLADEN" },
-  { id: "vorort", name: "Vorstadtsupermarkt", desc: "Supermarkt am Stadtrand mit Kühltheke und großem Parkplatz.", cost: 1.5e9, mult: 8, maxLvl: 400, maxPark: 8, maxAd: 60, maxKasse: 5, stock: 200,
+  { id: "vorort", name: "Vorstadtsupermarkt", desc: "Supermarkt am Stadtrand mit Kühltheke und großem Parkplatz.", cost: 1.5e9, mult: 8, maxLvl: 900, maxPark: 8, maxAd: 60, maxKasse: 5, stock: 200,
     ground: "#c8dfa0", ground2: "#b7d28c", lot: "#9a9fb0", lotLine: "#fffdf2", wall: "#e0a070", roof: "#6a7aa8", floor: "#f2e4dc", floor2: "#e6d4c8", sign: "MARKT" },
-  { id: "stadt", name: "Handelsstadt", desc: "Ein Einkaufszentrum mit Glasfassade und Parkhaus.", cost: 1.5e12, mult: 25, maxLvl: 600, maxPark: 12, maxAd: 100, maxKasse: 7, stock: 300,
+  { id: "stadt", name: "Handelsstadt", desc: "Ein Einkaufszentrum mit Glasfassade und Parkhaus.", cost: 1.5e12, mult: 25, maxLvl: 1800, maxPark: 12, maxAd: 100, maxKasse: 7, stock: 300,
     ground: "#b9c6d4", ground2: "#a9b8c8", lot: "#7d8498", lotLine: "#f2b705", wall: "#8fb8d8", roof: "#3f5f8f", floor: "#e4eef6", floor2: "#d3e2ee", sign: "SUPERMARKT" },
-  { id: "welt", name: "Weltkonzern", desc: "Das Imperium: Goldene Türme, Hubschrauberlandeplatz, VIP-Parkplatz.", cost: 5e15, mult: 120, maxLvl: 1000, maxPark: 20, maxAd: 200, maxKasse: 8, stock: 500,
+  { id: "welt", name: "Weltkonzern", desc: "Das Imperium: Goldene Türme, Hubschrauberlandeplatz, VIP-Parkplatz.", cost: 5e15, mult: 120, maxLvl: 3000, maxPark: 20, maxAd: 200, maxKasse: 8, stock: 500,
     ground: "#2f3a5c", ground2: "#27304f", lot: "#3b4468", lotLine: "#f2b705", wall: "#e8c04a", roof: "#f2b705", floor: "#fff4cf", floor2: "#f6e4a0", sign: "WELT-KONZERN" },
 ];
 
@@ -391,22 +392,21 @@ function unlockDept(id, auto) {
 // ---------- Rechenformeln ----------
 const msCount = l => { let n = 0; for (const m of MILESTONES) if (l >= m) n++; return n; };
 const deptPrice = (id, l) => DEPT_BY[id].p0 * l * Math.pow(2, msCount(l));
-const lvlCost = (id, l) => DEPT_BY[id].c0 * Math.pow(LVL_GROWTH, l - 1);
-const geo = (c0, r, n) => c0 * (Math.pow(r, n) - 1) / (r - 1);
-function maxAfford(c0, r, money, cap) {
-  if (money < c0) return 0;
-  const n = Math.floor(Math.log(1 + money * (r - 1) / c0) / Math.log(r));
-  return clamp(n, 0, cap);
-}
+// Kosten pro Stufe: bis 300 wächst es um 9 %, danach flacher (damit Stufe 3000 erreichbar bleibt)
+const UC = [0, 1], CUM = [0, 1];
+for (let l = 2; l <= 3001; l++) { const g = l <= 300 ? 1.09 : l <= 1000 ? 1.04 : l <= 2000 ? 1.02 : 1.01; UC[l] = UC[l - 1] * g; CUM[l] = CUM[l - 1] + UC[l]; }
+const lvlCost = (id, l) => DEPT_BY[id].c0 * UC[Math.min(l, 3001)];
+const costRange = (id, l, n) => DEPT_BY[id].c0 * (CUM[Math.min(3001, l + n - 1)] - CUM[Math.max(0, l - 1)]);
+function maxAffordLvl(id, l, money, cap) { let lo = 0, hi = cap; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (costRange(id, l, m) <= money) lo = m; else hi = m - 1; } return lo; }
 const locOf = () => LOCS[S.loc];
 const lvlCap = () => locOf().maxLvl;
 function nextMilestone(l) { for (const m of MILESTONES) if (m > l && m <= lvlCap()) return m; return lvlCap(); }
 function buyCount(id) { // wie viele Stufen würde ein Klick kaufen
   const d = S.dept[id], cap = Math.max(0, lvlCap() - d.lvl);
-  if (S.mode === 0) return Math.max(1, Math.min(cap, maxAfford(lvlCost(id, d.lvl), LVL_GROWTH, S.money, cap)));
+  if (S.mode === 0) return Math.max(1, maxAffordLvl(id, d.lvl, S.money, cap));
   return Math.min(S.mode, cap);
 }
-function levelCostN(id, n) { return geo(lvlCost(id, S.dept[id].lvl), LVL_GROWTH, n); }
+function levelCostN(id, n) { return costRange(id, S.dept[id].lvl, n); }
 function levelUp(id) {
   const d = S.dept[id], n = buyCount(id);
   if (n <= 0) return false;
@@ -1003,6 +1003,93 @@ const ITEMS = {
 };
 function itemTier(id, lvl) { const d = DEPT_BY[id]; let t = 0; d.prod.forEach((p, i) => { if (lvl >= p[0]) t = i; }); return t; }
 "use strict";
+// 24 Ausbaustufen (jeder x2-Meilenstein = neues Aussehen), von normalem Obst bis zu kosmischen Cyborg-Früchten.
+const BASE = {
+  obst: ["Apfel", "Birne", "Traube", "Melone", "Drachenfrucht", "Ananas"],
+  gemuese: ["Möhre", "Salat", "Paprika", "Kürbis", "Brokkoli", "Trüffel"],
+  back: ["Brötchen", "Brot", "Brezel", "Torte", "Hochzeitstorte", "Krontorte"],
+  kuehl: ["Milch", "Joghurt", "Käse", "Eis", "Butter", "Edelkäse"],
+  tk: ["Pommes", "Pizza", "Eisbecher", "Fischfilet", "Hummer", "Eisbombe"],
+  fleisch: ["Bratwurst", "Braten", "Filet", "Schinken", "Steak", "Königssteak"],
+  fein: ["Oliven", "Lachs", "Pastete", "Kaviar", "Praline", "Safran"],
+  elektro: ["Taschenlampe", "Radio", "Fernseher", "Konsole", "Saugroboter", "Raumschiff"],
+};
+const sp = (x, y, r, c) => star(x, y, r, c || "#fffdf2", { sw: 0.8 });
+// t = Farbton, a = Stärke der Einfärbung, ov = Zusatzzeichnung, op = Durchsichtigkeit, fl = schwebt, name/desc für die Anzeige
+const ERAS = [
+  { mod: "", desc: "Frisch aus dem Lager." },
+  { mod: "Bio", desc: "Aus ökologischem Anbau.", ov: (x, y, s) => shp([[x + 4 * s, y - 14 * s], [x + 11 * s, y - 20 * s], [x + 10 * s, y - 12 * s]], "#4fc84a", { sw: 1.1 }) },
+  { mod: "Premium", desc: "Nur die beste Qualität.", ov: (x, y, s) => circ(x + 8 * s, y - 14 * s, 4 * s, "#e0303c", { sw: 1.1 }) + txt(x + 8 * s, y - 12.6 * s, "1a", 5 * s, "#fff") },
+  { mod: "Edel", t: "#ffffff", a: .15, desc: "Für echte Genießer.", ov: (x, y, s) => sp(x + 8 * s, y - 16 * s, 3 * s) + sp(x - 8 * s, y - 6 * s, 2 * s) },
+  { mod: "Gold", t: "#f2b705", a: .55, desc: "Mit Blattgold veredelt.", ov: (x, y, s) => sp(x + 8 * s, y - 16 * s, 3.4 * s, "#fff6b0") + sp(x - 8 * s, y - 8 * s, 2.4 * s, "#fff6b0") },
+  { mod: "Diamant", t: "#bfe6ff", a: .6, desc: "Funkelt wie ein Diamant.", ov: (x, y, s) => sp(x + 9 * s, y - 15 * s, 3.6 * s) + sp(x - 9 * s, y - 10 * s, 3 * s) + sp(x + 2 * s, y - 20 * s, 2.4 * s) + line(x - 6 * s, y - 12 * s, x - 2 * s, y - 15 * s, 1.4, "#fff", { one: 1 }) },
+  { mod: "Chrom", t: "#c8d0e0", a: .75, desc: "Spiegelglatt poliert.", ov: (x, y, s) => line(x - 5 * s, y - 13 * s, x - 2 * s, y - 4 * s, 2.4, "rgba(255,255,255,.85)", { one: 1 }) },
+  { mod: "Kristall", t: "#9ad8ff", a: .6, desc: "Durchsichtig wie Glas.", ov: (x, y, s) => ink("M" + (x - 5 * s) + " " + (y - 12 * s) + "L" + (x + 1 * s) + " " + (y - 6 * s) + "L" + (x + 6 * s) + " " + (y - 12 * s) + "M" + (x + 1 * s) + " " + (y - 6 * s) + "L" + (x + 1 * s) + " " + (y - 1 * s), 1, "rgba(255,255,255,.9)") },
+  { mod: "Neon", t: "#ff4ad0", a: .55, glow: "#ff4ad0", desc: "Leuchtet im Dunkeln." },
+  { mod: "Laser", t: "#ff5a5a", a: .5, glow: "#ff3a3a", desc: "Von Lasern geschnitten.", ov: (x, y, s) => line(x - 12 * s, y - 7 * s, x + 12 * s, y - 7 * s, 1.4, "#ff2a2a", { one: 1 }) + circ(x - 12 * s, y - 7 * s, 1.6 * s, "#ff2a2a", { nostroke: 1 }) },
+  { mod: "Turbo", t: "#ff9a2a", a: .5, desc: "Wächst mit Turbo-Antrieb.", ov: (x, y, s) => shp([[x - 8 * s, y - 4 * s], [x - 16 * s, y - 8 * s], [x - 8 * s, y - 10 * s]], "#f28a1a", { sw: 1 }) + line(x - 18 * s, y - 5 * s, x - 11 * s, y - 5 * s, 1.2, "#f2b705", { one: 1 }) },
+  { mod: "Cyber", t: "#8a95a8", a: .45, desc: "Mit eingebautem Chip.", ov: (x, y, s) => circ(x + 4 * s, y - 9 * s, 1.8 * s, "#4affff", { sw: 0.8 }) + ink("M" + (x - 6 * s) + " " + (y - 4 * s) + "L" + (x - 2 * s) + " " + (y - 4 * s) + "L" + (x) + " " + (y - 7 * s) + "L" + (x + 4 * s) + " " + (y - 7 * s), 1.1, "#4affff") },
+  { mod: "Cyborg", t: "#a8b0c0", a: .3, desc: "Halb Natur, halb Maschine.", ov: (x, y, s) => rect(x - 7 * s, y - 12 * s, 7 * s, 6 * s, "#9aa4b8", { sw: 1.2 }) + hatch(x - 7 * s, y - 12 * s, 7 * s, 6 * s, 2.6, INK, .8, .5) + circ(x + 3 * s, y - 8 * s, 2.6 * s, "#e0303c", { sw: 1 }) + circ(x + 3 * s, y - 8 * s, 1 * s, "#ffd0d0", { nostroke: 1 }) + circ(x - 5 * s, y - 11 * s, 0.9 * s, INK, { nostroke: 1 }) + line(x + 6 * s, y - 14 * s, x + 9 * s, y - 20 * s, 1.2) + circ(x + 9 * s, y - 20 * s, 1.4 * s, "#e0303c", { nostroke: 1 }) },
+  { mod: "Plasma", t: "#b04aff", a: .55, glow: "#b04aff", desc: "Glüht vor Energie.", ov: (x, y, s) => ink("M" + (x - 9 * s) + " " + (y - 14 * s) + "l4 4 -3 2 5 5 -2 -6 4 -2", 1.3, "#fff6b0") },
+  { mod: "Hologramm", t: "#7ad0ff", a: .75, op: .75, glow: "#7ad0ff", desc: "Nur ein Lichtbild, aber lecker.", ov: (x, y, s) => { let o = ""; for (let k = 0; k < 5; k++) o += line(x - 10 * s, y - 3 * s - k * 3.4 * s, x + 10 * s, y - 3 * s - k * 3.4 * s, .8, "rgba(255,255,255,.7)", { one: 1 }); return o + ell(x, y + 1, 11 * s, 2.6 * s, "none", { sw: 1.2, st: "#7ad0ff" }); } },
+  { mod: "Quanten", t: "#4affb0", a: .6, ghost: 1, desc: "Gleichzeitig hier und dort.", ov: (x, y, s) => sp(x - 10 * s, y - 12 * s, 2 * s, "#4affb0") + sp(x + 11 * s, y - 4 * s, 2 * s, "#4affb0") },
+  { mod: "Nano", t: "#e8f4ff", a: .55, desc: "Winzige Roboter halten es frisch.", ov: (x, y, s) => { let o = ""; for (let k = 0; k < 9; k++) o += circ(x + (hs(k, 1, 7) - .5) * 22 * s, y - 2 * s - hs(k, 2, 7) * 16 * s, .9 * s, "#4affff", { nostroke: 1 }); return o; } },
+  { mod: "Schwerkraft", t: "#c8b0ff", a: .4, fl: 1, glow: "#b890ff", desc: "Schwebt über dem Regal.", ov: (x, y, s) => ell(x, y + 1, 9 * s, 2 * s, "rgba(184,144,255,.55)", { nostroke: 1 }) },
+  { mod: "Stern", t: "#ffe680", a: .6, glow: "#ffe680", desc: "Gewachsen im Sternenlicht.", ov: (x, y, s) => sp(x - 10 * s, y - 14 * s, 3 * s, "#fff6b0") + sp(x + 10 * s, y - 10 * s, 3.4 * s, "#fff6b0") + sp(x + 2 * s, y - 22 * s, 2.4 * s, "#fff6b0") },
+  { mod: "Mond", t: "#e8e8f0", a: .6, desc: "Vom Mond geerntet.", ov: (x, y, s) => circ(x - 2 * s, y - 9 * s, 2 * s, "#b8b8c8", { sw: .8 }) + circ(x + 3 * s, y - 5 * s, 1.6 * s, "#b8b8c8", { sw: .8 }) + circ(x + 3 * s, y - 12 * s, 1.2 * s, "#b8b8c8", { sw: .8 }) },
+  { mod: "Galaxie", t: "#6a3aa8", a: .6, glow: "#9a6aff", desc: "Direkt aus der Galaxie.", ov: (x, y, s) => ink("M" + x + " " + (y - 8 * s) + "q6 -8 12 0 q-6 10 -14 2", 1.3, "#fff") + sp(x - 8 * s, y - 14 * s, 2 * s) },
+  { mod: "Nebel", t: "#ff6ab8", a: .55, glow: "#ff6ab8", desc: "In Sternennebel getaucht.", ov: (x, y, s) => circ(x - 9 * s, y - 4 * s, 4.4 * s, "rgba(255,106,184,.5)", { nostroke: 1 }) + circ(x + 10 * s, y - 12 * s, 5 * s, "rgba(122,208,255,.45)", { nostroke: 1 }) },
+  { mod: "Kosmos", t: "#2a1a5a", a: .6, glow: "#6a4aff", desc: "Kosmische Delikatesse.", ov: (x, y, s) => { let o = ell(x, y - 8 * s, 14 * s, 4 * s, "none", { sw: 1.2, st: "#b8a0ff" }); for (let k = 0; k < 8; k++) o += circ(x + (hs(k, 3, 7) - .5) * 20 * s, y - 2 * s - hs(k, 4, 7) * 16 * s, .8 * s, "#fffdf2", { nostroke: 1 }); return o; } },
+  { mod: "Unendlich", t: "#ffffff", a: .5, glow: "#ffe680", desc: "Ohne Anfang und ohne Ende.", ov: (x, y, s) => ink("M" + (x - 14 * s) + " " + (y - 2 * s) + "Q" + x + " " + (y - 26 * s) + " " + (x + 14 * s) + " " + (y - 2 * s), 2.2, "#ff6a6a") + ink("M" + (x - 12 * s) + " " + (y - 2 * s) + "Q" + x + " " + (y - 23 * s) + " " + (x + 12 * s) + " " + (y - 2 * s), 2.2, "#ffd34a") + ink("M" + (x - 10 * s) + " " + (y - 2 * s) + "Q" + x + " " + (y - 20 * s) + " " + (x + 10 * s) + " " + (y - 2 * s), 2.2, "#6ad0ff") + sp(x + 12 * s, y - 20 * s, 3 * s, "#fff6b0") + sp(x - 13 * s, y - 16 * s, 2.4 * s, "#fff6b0") },
+];
+const MS_MAX = ERAS.length - 1;
+function stageItem(id, st, x, y, s) { // Ware der Ausbaustufe st
+  const e = ERAS[Math.min(MS_MAX, st)], base = ITEMS[id][st % 6];
+  let o = base(x, y, s);
+  if (e.t) o = o.replace(/fill="(#[0-9a-fA-F]{6})"/g, (m, c) => 'fill="' + mixHex(c, e.t, e.a) + '"');
+  if (e.glow) o = circ(x, y - 8 * s, 13 * s, e.glow, { nostroke: 1, op: .28 }) + o;
+  if (e.ghost) o = '<g opacity=".35" transform="translate(5 -3)">' + o + "</g>" + o;
+  if (e.fl) o = '<g transform="translate(0 -9)">' + o + "</g>";
+  if (e.op) o = '<g opacity="' + e.op + '">' + o + "</g>";
+  if (e.ov) o += e.ov(x, y + (e.fl ? -9 : 0), s);
+  return o;
+}
+function prodOf(id, lvl) { const ms = Math.min(MS_MAX, msCount(lvl)), e = ERAS[ms], b = BASE[id][ms % 6]; return { name: (e.mod ? e.mod + "-" : "") + b, desc: e.desc, ms }; }
+
+// Regalbrett je Ausbaustufe
+function plankSvg(x, w, py, ms, wood, deptCol) {
+  if (ms < 3) return rect(x + 6, py, w - 12, 5, ms >= 2 ? lt(wood, .25) : wood, { sw: 1.7 });
+  if (ms < 6) return rect(x + 6, py, w - 12, 5, "#cfd6e0", { sw: 1.7 }) + line(x + 10, py + 1.6, x + w - 10, py + 1.6, 1, "#fff", { one: 1 });
+  if (ms < 9) return rect(x + 6, py, w - 12, 5, "#f2b705", { sw: 1.7 }) + line(x + 10, py + 1.6, x + w - 10, py + 1.6, 1, "#fff6b0", { one: 1 });
+  if (ms < 12) return rect(x + 6, py, w - 12, 6, "rgba(190,230,255,.75)", { sw: 1.7 }) + line(x + 10, py + 2, x + w - 10, py + 2, 1.4, "#fff", { one: 1 });
+  if (ms < 15) return rect(x + 6, py, w - 12, 5, "#1a1f3a", { sw: 1.7 }) + '<g class="blink">' + line(x + 8, py - .5, x + w - 8, py - .5, 2.4, deptCol, { one: 1 }) + "</g>";
+  if (ms < 18) { let o = rect(x + 6, py, w - 12, 6, "#5a6a7a", { sw: 1.7 }); for (let k = 0; k < 8; k++) o += circ(x + 14 + k * (w - 28) / 7, py + 3, 1.2, k % 2 ? "#4affff" : "#ff4a4a", { nostroke: 1 }); return o; }
+  if (ms < 21) return '<g class="blink">' + line(x + 8, py + 1, x + w - 8, py + 1, 2, "#7ad0ff", { dash: "5 4", one: 1 }) + "</g>" + ell(x + w / 2, py + 5, (w - 20) / 2, 2.4, "rgba(122,208,255,.25)", { nostroke: 1 });
+  return rect(x + 6, py, w - 12, 5, "#fffdf2", { sw: 1.4, st: "#7ad0ff" }) + '<g class="blink">' + ell(x + w / 2, py + 5, (w - 14) / 2, 3.4, "rgba(184,144,255,.45)", { nostroke: 1 }) + "</g>";
+}
+// Wandverkleidung je Ausbaustufe (liegt über der Grundwand, unter den Regalen)
+function wallFx(x, w, ms, col) {
+  let s = "";
+  const y0 = CEIL, h = FB - CEIL;
+  if (ms >= 9 && ms < 12) for (let c = 0; c < 6; c++) s += rect(x + 8 + c * 25, y0, 4, h, "rgba(255,255,255,.4)", { nostroke: 1 });
+  if (ms >= 12 && ms < 15) { s += rect(x, y0, w, h, "rgba(20,24,60,.55)", { nostroke: 1 }); for (let c = 1; c < 6; c++) s += '<g class="blink" style="animation-delay:' + c * .3 + 's">' + line(x + c * 25, y0, x + c * 25, FB, 1.6, col, { one: 1 }) + "</g>"; for (let r = 1; r < 5; r++) s += line(x, y0 + r * 26, x + w, y0 + r * 26, 1, col, { one: 1 }); }
+  if (ms >= 15 && ms < 18) { s += rect(x, y0, w, h, "rgba(14,24,50,.7)", { nostroke: 1 }); for (let k = 0; k < 14; k++) { const px = x + 6 + hs(k, 1, 4) * (w - 12), py = y0 + 8 + hs(k, 2, 4) * (h - 16); s += ink("M" + px + " " + py + "h" + (10 + hs(k, 3, 4) * 24) + "v" + (8 + hs(k, 4, 4) * 20), 1.2, k % 2 ? "#4affff" : "#4aff8a") + circ(px, py, 1.8, "#4affff", { nostroke: 1 }); } }
+  if (ms >= 18) { s += rect(x, y0, w, h, ms >= 21 ? "rgba(30,10,60,.78)" : "rgba(8,10,40,.78)", { nostroke: 1 }); if (ms >= 21) for (let k = 0; k < 5; k++) s += circ(x + hs(k, 1, 5) * w, y0 + hs(k, 2, 5) * h, 26 + hs(k, 3, 5) * 20, ["rgba(255,106,184,.22)", "rgba(106,138,255,.25)", "rgba(184,106,255,.22)"][k % 3], { nostroke: 1 }); for (let k = 0; k < 16; k++) s += '<g class="tw" style="animation-delay:' + (k * .23) + 's">' + circ(x + 4 + hs(k, 4, 5) * (w - 8), y0 + 4 + hs(k, 5, 5) * (h - 8), .8 + hs(k, 6, 5) * 1.2, "#fffdf2", { nostroke: 1 }) + "</g>"; if (ms < 21) for (let r = 1; r < 5; r++) s += line(x, y0 + r * 26, x + w, y0 + r * 26, .8, "rgba(122,208,255,.5)", { one: 1 }); }
+  return s;
+}
+// Roboter-Personal ab Stufe 15 (ab 21 mit Heiligenschein/Schweben)
+function robot(col, fr, halo) {
+  let s = halo ? ell(0, -46, 8, 2.4, "none", { sw: 1.6, st: "#ffe680" }) : sh(0, 0, 8, 2.3);
+  const L = fr === 0 ? [-2, 2] : [2, -2];
+  if (!halo) s += rect(-5 + L[0], -9, 3.6, 9, "#6a7a8a", { sw: 1.4 }) + rect(1.4 + L[1], -9, 3.6, 9, "#5a6a7a", { sw: 1.4 }) + rect(-6, -2.6, 5.4, 2.6, "#2a2a3a", { sw: 1.1 }) + rect(1, -2.6, 5.4, 2.6, "#2a2a3a", { sw: 1.1 });
+  else s += shp([[-4, -12], [4, -12], [0, -2]], "rgba(122,208,255,.6)", { sw: 1 });
+  s += rect(-7, -28, 14, 18, col, { sw: 1.8 }) + rect(-4.4, -25, 8.8, 7, "#fffdf2", { sw: 1.1 }) + circ(-2, -21.5, 1.2, "#4affff", { nostroke: 1 }) + circ(2, -21.5, 1.2, "#ff4a8a", { nostroke: 1 });
+  s += rect(-10.6, -27, 3.6, 12, "#9aa4b8", { sw: 1.3 }) + rect(7, -27, 3.6, 12, "#9aa4b8", { sw: 1.3 });
+  s += rect(-6, -40, 12, 11, "#cfd6e0", { sw: 1.7 }) + rect(-4.4, -37.6, 8.8, 5, "#1a2a4a", { sw: 1 }) + circ(-2, -35, 1.3, "#4affff", { nostroke: 1 }) + circ(2, -35, 1.3, "#4affff", { nostroke: 1 });
+  s += line(0, -40, 0, -46, 1.4) + circ(0, -47, 1.8, "#e0303c", { sw: 1 });
+  return s;
+}
+"use strict";
 // Seitenschnitt durch den Supermarkt (handgezeichnetes SVG): Laden mit Abteilungen nebeneinander,
 // darunter der Parkplatz in Draufsicht (senkrechte Buchten). Jeder Standort sieht anders aus.
 const R = { t: 0, vis: [], coins: [], pops: [], amb: [], spawn: 0, vipT: 20, sig: "", G: null, ids: 0, nodes: {} };
@@ -1070,7 +1157,7 @@ const WALLS = {
 };
 function deptCell(G, id, x) {
   const d = DEPT_BY[id], dd = S.dept[id], W = WALLS[id], w = DW; let s = "";
-  const tier = itemTier(id, dd.lvl), ms = msCount(dd.lvl);
+  const ms = Math.min(MS_MAX, msCount(dd.lvl));
   s += rect(x, CEIL, w, FB - CEIL, W[0], { sw: 0, nostroke: 1 });
   const dark = W[2] === "dark";
   // Wandmuster
@@ -1079,10 +1166,10 @@ function deptCell(G, id, x) {
   else if (W[2] === "wood") { for (let c = 0; c < 10; c++) s += line(x + c * 15 + 4, CEIL, x + c * 15 + 4, FB, 1, "#d8c090", { one: 1 }); }
   else if (W[2] === "frost") { s += hatch(x, CEIL, w, FB - CEIL, 8, "#7a9ae0", 1, .3); }
   else if (dark) { s += hatch(x, CEIL, w, FB - CEIL, 7, "#000", 1, .18); }
+  s += wallFx(x, w, ms, W[1]);
   // Möbel je Abteilung
   const plank = dark ? "#5a2a40" : id === "obst" || id === "gemuese" ? "#b8803a" : W[2] === "tile" ? "#dfe8f0" : W[2] === "frost" ? "#cfe0ff" : "#c8a070";
   const rows = [258, 292, 326];
-  const plankMs = ms >= 5 ? "#f2b705" : ms >= 2 ? lt(plank, .25) : plank;
   if (id === "obst" || id === "gemuese") { // Marktstand: Markise und Holzregal
     for (let i = 0; i < 6; i++) s += shp([[x + i * 25, CEIL + 2], [x + i * 25 + 25, CEIL + 2], [x + i * 25 + 28, CEIL + 24], [x + i * 25 + 3, CEIL + 24]], i % 2 ? "#fffdf2" : W[1], { sw: 1.5 });
     s += ink("M" + x + " " + (CEIL + 24) + "Q" + (x + 12) + " " + (CEIL + 32) + " " + (x + 25) + " " + (CEIL + 24) + "Q" + (x + 37) + " " + (CEIL + 32) + " " + (x + 50) + " " + (CEIL + 24) + "Q" + (x + 62) + " " + (CEIL + 32) + " " + (x + 75) + " " + (CEIL + 24) + "Q" + (x + 87) + " " + (CEIL + 32) + " " + (x + 100) + " " + (CEIL + 24) + "Q" + (x + 112) + " " + (CEIL + 32) + " " + (x + 125) + " " + (CEIL + 24) + "Q" + (x + 137) + " " + (CEIL + 32) + " " + (x + 150) + " " + (CEIL + 24), 2);
@@ -1109,14 +1196,18 @@ function deptCell(G, id, x) {
   const topY = id === "fleisch" ? 302 : id === "kuehl" || id === "tk" ? 262 : 258;
   const planks = id === "fleisch" ? [326] : id === "kuehl" || id === "tk" ? [258, 290, 322] : rows;
   planks.forEach((py, ri) => {
-    s += rect(x + 6, py, w - 12, 5, plankMs, { sw: 1.7 }) + line(x + 10, py + 5, x + 10, py + 30, 1.6, "#8a6a4a", { one: 1 }) + line(x + w - 10, py + 5, x + w - 10, py + 30, 1.6, "#8a6a4a", { one: 1 });
-    const t = Math.max(0, tier - ri), n = Math.min(5, 3 + Math.min(2, Math.floor(ms / 3) + (ri === 0 ? 1 : 0)));
-    for (let k = 0; k < n; k++) s += ITEMS[id][t](x + 24 + k * (w - 48) / Math.max(1, n - 1), py, id === "obst" ? 1.05 : 1);
+    s += plankSvg(x, w, py, ms, plank, W[1]) + line(x + 10, py + 5, x + 10, py + 30, 1.6, "#8a6a4a", { one: 1 }) + line(x + w - 10, py + 5, x + w - 10, py + 30, 1.6, "#8a6a4a", { one: 1 });
+    const t = Math.max(0, ms - ri), n = Math.min(5, 3 + (ms > 0 ? 1 : 0) + (ms > 2 ? 1 : 0));
+    for (let k = 0; k < n; k++) s += stageItem(id, t, x + 24 + k * (w - 48) / Math.max(1, n - 1), py, id === "obst" ? 1.05 : 1);
   });
   // Schild (wird mit den Meilensteinen schöner)
   s += line(x + 38, CEIL, x + 44, 226, 1.5) + line(x + w - 38, CEIL, x + w - 44, 226, 1.5);
   const tw = Math.max(84, d.name.length * 9.6 + 22);
-  if (ms >= 3) {
+  if (ms >= 21) {
+    s += '<g class="blink">' + rect(x + w / 2 - tw / 2 - 3, 212, tw + 6, 28, "rgba(122,208,255,.2)", { sw: 1.4, st: "#7ad0ff" }) + txt(x + w / 2, 232, d.name.toUpperCase(), 19, "#aef0ff", "middle", { stroke: "#2a5a9a", sw: 3 }) + "</g>" + star(x + w / 2 - tw / 2 - 9, 226, 7, "#ffe680", { sw: 1.3 }) + star(x + w / 2 + tw / 2 + 9, 226, 7, "#ffe680", { sw: 1.3 });
+  } else if (ms >= 15) {
+    s += rect(x + w / 2 - tw / 2 - 3, 212, tw + 6, 28, "#0e1630", { sw: 2.4 }) + '<g class="blink">' + txt(x + w / 2, 232, d.name.toUpperCase(), 19, W[1], "middle", { stroke: lt(W[1], .6), sw: 1 }) + "</g>" + circ(x + w / 2 - tw / 2 - 8, 226, 3, "#4affff", { nostroke: 1 }) + circ(x + w / 2 + tw / 2 + 8, 226, 3, "#ff4a8a", { nostroke: 1 });
+  } else if (ms >= 3) {
     s += rect(x + w / 2 - tw / 2 - 3, 212, tw + 6, 28, W[1], { sw: 2.4 }) + rect(x + w / 2 - tw / 2 + 1, 216, tw - 2, 20, "#fffdf2", { sw: 1.2 }) + txt(x + w / 2, 232, d.name.toUpperCase(), 18, W[1]);
     s += star(x + w / 2 - tw / 2 - 9, 226, 7, "#f2b705", { sw: 1.3 });
     if (ms >= 6) s += star(x + w / 2 + tw / 2 + 9, 226, 7, "#f2b705", { sw: 1.3 });
@@ -1128,7 +1219,7 @@ function deptCell(G, id, x) {
   if (ms >= 2) [x + 34, x + w - 34].forEach(lx => { s += line(lx, CEIL, lx, CEIL + 22, 1.4) + shp([[lx - 8, CEIL + 30], [lx + 8, CEIL + 30], [lx + 4, CEIL + 20], [lx - 4, CEIL + 20]], "#f6d84a", { sw: 1.6 }) + '<g class="blink">' + circ(lx, CEIL + 32, 3, "#fff6b0", { nostroke: 1 }) + "</g>"; });
   if (ms >= 4) { for (let k = 0; k < 8; k++) s += shp([[x + 8 + k * 17, CEIL + 3], [x + 22 + k * 17, CEIL + 3], [x + 15 + k * 17, CEIL + 14]], [W[1], "#f2b705", "#e0303c", "#3a9ae0"][k % 4], { sw: 1.1 }); s += ink("M" + (x + 8) + " " + (CEIL + 3) + "L" + (x + w - 8) + " " + (CEIL + 3), 1.4); }
   if (ms >= 5) s += rect(x + 22, FF - 20, w - 44, 14, W[1], { sw: 1.8, op: .85 }) + hatch(x + 22, FF - 20, w - 44, 14, 5, "#fff", 1, .45) + line(x + 30, FF - 13, x + w - 30, FF - 13, 1.2, "#f2b705", { one: 1 });
-  if (ms >= 6) s += rect(x + w - 30, FB - 12, 24, 12, "#b8803a", { sw: 1.6 }) + rect(x + w - 26, FB - 22, 16, 11, "#c8903a", { sw: 1.6 }) + ITEMS[id][tier](x + w - 18, FB - 22, .8);
+  if (ms >= 6) s += rect(x + w - 30, FB - 12, 24, 12, "#b8803a", { sw: 1.6 }) + rect(x + w - 26, FB - 22, 16, 11, "#c8903a", { sw: 1.6 }) + stageItem(id, ms, x + w - 18, FB - 22, .8);
   if (ms >= 7) for (let k = 0; k < 6; k++) s += '<g class="tw" style="animation-delay:' + (k * .4) + 's">' + star(x + 14 + hs(k, 3, 3) * (w - 28), CEIL + 40 + hs(k, 4, 4) * 90, 4, "#fff6b0", { sw: 0.8 }) + "</g>";
   if (ms >= 8) s += rect(x - 3, CEIL, 6, FB - CEIL, "#f2b705", { sw: 1.8 });
   if (ms >= 12) s += '<g class="beam" style="transform-origin:' + (x + w / 2) + 'px ' + CEIL + 'px">' + shp([[x + w / 2 - 3, CEIL], [x + w / 2 + 3, CEIL], [x + w / 2 + 30, FB], [x + w / 2 - 30, FB]], "rgba(255,246,200,.28)", { nostroke: 1 }) + "</g>";
@@ -1322,6 +1413,7 @@ function defs(G) {
   // Personal je Abteilung
   const hats = { obst: ["cap", "#4fa84a"], gemuese: ["cap", "#4fa84a"], back: ["baker"], kuehl: ["cap", "#3a7ae0"], tk: ["cap", "#4a6ae0"], fleisch: ["butcher"], fein: ["chef"], elektro: ["hard"] };
   DEPTS.forEach(d => { for (let i = 0; i < 4; i++) s += '<g id="s_' + d.id + i + '">' + figure(d.col, SKINS[(i + 1) % 4], HAIRS[(i * 2 + 1) % 6], PANTS[i % 4], 2, { apron: i % 2 ? "#fffdf2" : lt(d.col, .45), hat: hats[d.id][0], hatCol: hats[d.id][1], hairStyle: i % 3 }) + "</g>"; });
+  DEPTS.forEach(d => { for (let i = 0; i < 4; i++) s += '<g id="r_' + d.id + i + '">' + robot(d.col, i % 2, 0) + '</g><g id="z_' + d.id + i + '">' + robot(lt(d.col, .3), i % 2, 1) + '</g>'; });
   for (let i = 0; i < 8; i++) s += '<g id="k' + i + '">' + figure("#2f9a9a", SKINS[(i + 2) % 4], HAIRS[(i * 3) % 6], "#2a3a5a", 2, { apron: "#fffdf2", hairStyle: i % 3 }) + "</g>";
   for (let k = 0; k < 10; k++) s += '<g id="p' + k + '">' + pedTop(SHIRTS[k % 8], SKINS[(k * 3) % 4], HAIRS[(k * 5) % 6]) + "</g>";
   const kinds = [["car", 1], ["car", 1], ["van", 1], ["car", 1]];
@@ -1348,7 +1440,7 @@ function buildScene(G) {
   return back;
 }
 function sigOf(G) { return [G.li, G.W, G.spots, G.kn, G.ids.map(id => id + S.dept[id].lvl + ":" + S.dept[id].emp + (isAuto(id) ? "a" : "m")).join(","), G.ghost].join("|"); }
-function sigStruct(G) { return [G.li, G.W, G.spots, G.kn, G.ids.map(id => id + itemTier(id, S.dept[id].lvl) + ":" + msCount(S.dept[id].lvl) + (isAuto(id) ? "a" : "m") + "e" + S.dept[id].emp).join(","), G.ghost].join("|"); }
+function sigStruct(G) { return [G.li, G.W, G.spots, G.kn, G.ids.map(id => id + ":" + msCount(S.dept[id].lvl) + (isAuto(id) ? "a" : "m") + "e" + S.dept[id].emp).join(","), G.ghost].join("|"); }
 
 function mk(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || dyn).appendChild(e); return e; }
 function useEl(id, parent) { const e = document.createElementNS(NS, "use"); e.setAttribute("href", "#" + id); e.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#" + id); (parent || dyn).appendChild(e); return e; }
@@ -1365,7 +1457,7 @@ function rebuild() {
   dyn = svg.querySelector("#dyn"); R.staffG = svg.querySelector("#staff"); R.popG = svg.querySelector("#pop");
   R.vis.length = 0; R.coins.length = 0; R.pops.length = 0; R.amb.length = 0; R.stf = [];
   // Personal
-  G.ids.forEach(id => { const dd = S.dept[id], x0 = G.cellX(id); for (let i = 0; i < dd.emp; i++) { const e = useEl("s_" + id + i, R.staffG); const bx = x0 + 28 + i * 31, by = 348; e.setAttribute("transform", "translate(" + bx + " " + by + ")"); R.stf.push({ e, x: bx, y: by, id, ph: i * 1.3 }); } });
+  G.ids.forEach(id => { const dd = S.dept[id], x0 = G.cellX(id); for (let i = 0; i < dd.emp; i++) { const m2 = msCount(dd.lvl), e = useEl((m2 >= 21 ? "z_" : m2 >= 15 ? "r_" : "s_") + id + i, R.staffG); const bx = x0 + 28 + i * 31, by = 348; e.setAttribute("transform", "translate(" + bx + " " + by + ")"); R.stf.push({ e, x: bx, y: by, id, ph: i * 1.3 }); } });
   for (let i = 0; i < G.kn; i++) { const x = G.kx + 30 + i * 46, e = useEl("k" + i, R.staffG); e.setAttribute("transform", "translate(" + x + " 360)"); R.stf.push({ e, x, y: 360, kas: true, ph: i }); }
   R.cnt = {}; setTimeout(() => { if (R.G === G) warmStart(); }, 0); R.parkedKey = ""; R.pk = null; R.vipE = null;
 }
@@ -1611,7 +1703,7 @@ function renderChrome() {
 // ---------- Abteilungs-Fenster (unteres Blatt) ----------
 function deptSheet() {
   const id = UI.dept, d = DEPT_BY[id], dd = S.dept[id], st = C.depts[id], m = S.mgr[id];
-  const prod = d.prod.filter(p => p[0] <= dd.lvl).pop() || d.prod[0];
+  const pr0 = prodOf(id, dd.lvl), prod = [0, pr0.name, pr0.desc];
   const nm = nextMilestone(dd.lvl), n = buyCount(id), mc = levelCostN(id, n), cap = lvlCap();
   const ids = Object.keys(S.dept), i = ids.indexOf(id);
   const next = MGR_MULT[Math.min(MGR_MAX, m.lvl + 1)];
@@ -1653,7 +1745,7 @@ function pageVerw() {
     b = '<div class="card"><div class="row"><div style="width:70px">' + ico("chart", 64) + '</div><div><h2 style="margin:0">STATISTIK</h2><div class="muted">Hier siehst du den Gesamtstatus deines Supermarkts. Unten werden die Durchschnittswerte angezeigt.</div></div></div>' +
       [["GEWINN PRO KUNDE", fmtFull(C.perCust), "#3fb04a", "cash"], ["KUNDEN KAUFEN", trimNum(C.flow, 0), "#3a8ae8", "leute"], ["KUNDENKAPAZITÄT", trimNum(C.cashCap, 0) + "/min", "#3a8ae8", "leute"], ["PARKPLATZNUTZUNG", Math.round(C.parkUse * 100) + " %", "#e82020", "park"], ["DURCHSCHN. KASSENSCHLANGE", C.queue, "#e82020", "leute"], ["DURCHSCHN. KASSENWARTEZEIT", trimNum(C.wait, 2) + " s", "#e82020", "kasse"]].map(x => '<div style="background:' + x[2] + ';border-radius:12px;color:#fff;font-family:var(--f-display);padding:5px 12px;margin-top:6px;display:flex;justify-content:space-between;align-items:center;border:2px solid var(--ink)"><span>' + x[0] + "</span><span>" + ico(x[3], 20) + " " + x[1] + "</span></div>").join("") + "</div>";
     let best = null, worst = null; for (const id in C.depts) { if (!best || C.depts[id].inc > C.depts[best].inc) best = id; if (!worst || C.depts[id].inc < C.depts[worst].inc) worst = id; }
-    b += Object.keys(S.dept).map(id => { const d = DEPT_BY[id], s = C.depts[id], dd = S.dept[id], pr = d.prod.filter(p => p[0] <= dd.lvl).pop(); return '<div class="card row">' + '<div style="text-align:center"><div style="background:#3a4ad0;color:#fff;border-radius:12px;font-family:var(--f-display);padding:0 10px">' + dd.lvl + "</div>" + deptIcon(id, 50) + '</div><div class="sp"><div><b style="font-family:var(--f-display);font-size:19px;color:#3a4ad0">' + d.name.toUpperCase() + "</b> " + pr[1] + '</div><div class="muted">Wert: ' + fmtFull(s.price) + "<br>Profite: " + fmtFull(s.inc) + "/min<br>Kundenkapazität: " + trimNum(s.cap, 1) + "/min</div></div>" + (id === best ? '<div style="color:#e89a3a;font-family:var(--f-display);text-align:center;font-size:14px">' + ico("star", 34) + "<br>BESTE<br>ABTEILUNG!</div>" : id === worst && Object.keys(S.dept).length > 2 ? '<div style="color:#e03030;font-family:var(--f-display);text-align:center;font-size:14px">!<br>WENIGER<br>PROFITABEL</div>' : "") + "</div>"; }).join("");
+    b += Object.keys(S.dept).map(id => { const d = DEPT_BY[id], s = C.depts[id], dd = S.dept[id], pr = (q => [0, q.name])(prodOf(id, dd.lvl)); return '<div class="card row">' + '<div style="text-align:center"><div style="background:#3a4ad0;color:#fff;border-radius:12px;font-family:var(--f-display);padding:0 10px">' + dd.lvl + "</div>" + deptIcon(id, 50) + '</div><div class="sp"><div><b style="font-family:var(--f-display);font-size:19px;color:#3a4ad0">' + d.name.toUpperCase() + "</b> " + pr[1] + '</div><div class="muted">Wert: ' + fmtFull(s.price) + "<br>Profite: " + fmtFull(s.inc) + "/min<br>Kundenkapazität: " + trimNum(s.cap, 1) + "/min</div></div>" + (id === best ? '<div style="color:#e89a3a;font-family:var(--f-display);text-align:center;font-size:14px">' + ico("star", 34) + "<br>BESTE<br>ABTEILUNG!</div>" : id === worst && Object.keys(S.dept).length > 2 ? '<div style="color:#e03030;font-family:var(--f-display);text-align:center;font-size:14px">!<br>WENIGER<br>PROFITABEL</div>' : "") + "</div>"; }).join("");
   }
   return pageWrap("verw", "VERWALTUNG", "#3a5ce0", b, tabsHtml("verw", [["geb", "GEBÄUDE", "hammer"], ["stat", "STATISTIK", "chart"]], cur));
 }

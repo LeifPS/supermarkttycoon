@@ -42,22 +42,21 @@ function unlockDept(id, auto) {
 // ---------- Rechenformeln ----------
 const msCount = l => { let n = 0; for (const m of MILESTONES) if (l >= m) n++; return n; };
 const deptPrice = (id, l) => DEPT_BY[id].p0 * l * Math.pow(2, msCount(l));
-const lvlCost = (id, l) => DEPT_BY[id].c0 * Math.pow(LVL_GROWTH, l - 1);
-const geo = (c0, r, n) => c0 * (Math.pow(r, n) - 1) / (r - 1);
-function maxAfford(c0, r, money, cap) {
-  if (money < c0) return 0;
-  const n = Math.floor(Math.log(1 + money * (r - 1) / c0) / Math.log(r));
-  return clamp(n, 0, cap);
-}
+// Kosten pro Stufe: bis 300 wächst es um 9 %, danach flacher (damit Stufe 3000 erreichbar bleibt)
+const UC = [0, 1], CUM = [0, 1];
+for (let l = 2; l <= 3001; l++) { const g = l <= 300 ? 1.09 : l <= 1000 ? 1.04 : l <= 2000 ? 1.02 : 1.01; UC[l] = UC[l - 1] * g; CUM[l] = CUM[l - 1] + UC[l]; }
+const lvlCost = (id, l) => DEPT_BY[id].c0 * UC[Math.min(l, 3001)];
+const costRange = (id, l, n) => DEPT_BY[id].c0 * (CUM[Math.min(3001, l + n - 1)] - CUM[Math.max(0, l - 1)]);
+function maxAffordLvl(id, l, money, cap) { let lo = 0, hi = cap; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (costRange(id, l, m) <= money) lo = m; else hi = m - 1; } return lo; }
 const locOf = () => LOCS[S.loc];
 const lvlCap = () => locOf().maxLvl;
 function nextMilestone(l) { for (const m of MILESTONES) if (m > l && m <= lvlCap()) return m; return lvlCap(); }
 function buyCount(id) { // wie viele Stufen würde ein Klick kaufen
   const d = S.dept[id], cap = Math.max(0, lvlCap() - d.lvl);
-  if (S.mode === 0) return Math.max(1, Math.min(cap, maxAfford(lvlCost(id, d.lvl), LVL_GROWTH, S.money, cap)));
+  if (S.mode === 0) return Math.max(1, maxAffordLvl(id, d.lvl, S.money, cap));
   return Math.min(S.mode, cap);
 }
-function levelCostN(id, n) { return geo(lvlCost(id, S.dept[id].lvl), LVL_GROWTH, n); }
+function levelCostN(id, n) { return costRange(id, S.dept[id].lvl, n); }
 function levelUp(id) {
   const d = S.dept[id], n = buyCount(id);
   if (n <= 0) return false;

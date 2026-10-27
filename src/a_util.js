@@ -9,6 +9,7 @@ function fmt(n) {
   if (!isFinite(n)) return "∞";
   if (n < 0) return "-" + fmt(-n);
   if (n < 1000) return n < 10 && n % 1 ? trimNum(n, 2) : String(Math.floor(n));
+  if (n >= 1e42) { const e = Math.floor(Math.log10(n)); return trimNum(n / Math.pow(10, e), 2) + "e" + e; }
   let i = Math.min(SUF.length - 1, Math.floor(Math.log10(n) / 3));
   let v = n / Math.pow(1000, i);
   let d = v >= 100 ? 0 : v >= 10 ? 1 : 2;

@@ -66,7 +66,7 @@ const WALLS = {
 };
 function deptCell(G, id, x) {
   const d = DEPT_BY[id], dd = S.dept[id], W = WALLS[id], w = DW; let s = "";
-  const tier = itemTier(id, dd.lvl), ms = msCount(dd.lvl);
+  const ms = Math.min(MS_MAX, msCount(dd.lvl));
   s += rect(x, CEIL, w, FB - CEIL, W[0], { sw: 0, nostroke: 1 });
   const dark = W[2] === "dark";
   // Wandmuster
@@ -75,10 +75,10 @@ function deptCell(G, id, x) {
   else if (W[2] === "wood") { for (let c = 0; c < 10; c++) s += line(x + c * 15 + 4, CEIL, x + c * 15 + 4, FB, 1, "#d8c090", { one: 1 }); }
   else if (W[2] === "frost") { s += hatch(x, CEIL, w, FB - CEIL, 8, "#7a9ae0", 1, .3); }
   else if (dark) { s += hatch(x, CEIL, w, FB - CEIL, 7, "#000", 1, .18); }
+  s += wallFx(x, w, ms, W[1]);
   // Möbel je Abteilung
   const plank = dark ? "#5a2a40" : id === "obst" || id === "gemuese" ? "#b8803a" : W[2] === "tile" ? "#dfe8f0" : W[2] === "frost" ? "#cfe0ff" : "#c8a070";
   const rows = [258, 292, 326];
-  const plankMs = ms >= 5 ? "#f2b705" : ms >= 2 ? lt(plank, .25) : plank;
   if (id === "obst" || id === "gemuese") { // Marktstand: Markise und Holzregal
     for (let i = 0; i < 6; i++) s += shp([[x + i * 25, CEIL + 2], [x + i * 25 + 25, CEIL + 2], [x + i * 25 + 28, CEIL + 24], [x + i * 25 + 3, CEIL + 24]], i % 2 ? "#fffdf2" : W[1], { sw: 1.5 });
     s += ink("M" + x + " " + (CEIL + 24) + "Q" + (x + 12) + " " + (CEIL + 32) + " " + (x + 25) + " " + (CEIL + 24) + "Q" + (x + 37) + " " + (CEIL + 32) + " " + (x + 50) + " " + (CEIL + 24) + "Q" + (x + 62) + " " + (CEIL + 32) + " " + (x + 75) + " " + (CEIL + 24) + "Q" + (x + 87) + " " + (CEIL + 32) + " " + (x + 100) + " " + (CEIL + 24) + "Q" + (x + 112) + " " + (CEIL + 32) + " " + (x + 125) + " " + (CEIL + 24) + "Q" + (x + 137) + " " + (CEIL + 32) + " " + (x + 150) + " " + (CEIL + 24), 2);
@@ -105,14 +105,18 @@ function deptCell(G, id, x) {
   const topY = id === "fleisch" ? 302 : id === "kuehl" || id === "tk" ? 262 : 258;
   const planks = id === "fleisch" ? [326] : id === "kuehl" || id === "tk" ? [258, 290, 322] : rows;
   planks.forEach((py, ri) => {
-    s += rect(x + 6, py, w - 12, 5, plankMs, { sw: 1.7 }) + line(x + 10, py + 5, x + 10, py + 30, 1.6, "#8a6a4a", { one: 1 }) + line(x + w - 10, py + 5, x + w - 10, py + 30, 1.6, "#8a6a4a", { one: 1 });
-    const t = Math.max(0, tier - ri), n = Math.min(5, 3 + Math.min(2, Math.floor(ms / 3) + (ri === 0 ? 1 : 0)));
-    for (let k = 0; k < n; k++) s += ITEMS[id][t](x + 24 + k * (w - 48) / Math.max(1, n - 1), py, id === "obst" ? 1.05 : 1);
+    s += plankSvg(x, w, py, ms, plank, W[1]) + line(x + 10, py + 5, x + 10, py + 30, 1.6, "#8a6a4a", { one: 1 }) + line(x + w - 10, py + 5, x + w - 10, py + 30, 1.6, "#8a6a4a", { one: 1 });
+    const t = Math.max(0, ms - ri), n = Math.min(5, 3 + (ms > 0 ? 1 : 0) + (ms > 2 ? 1 : 0));
+    for (let k = 0; k < n; k++) s += stageItem(id, t, x + 24 + k * (w - 48) / Math.max(1, n - 1), py, id === "obst" ? 1.05 : 1);
   });
   // Schild (wird mit den Meilensteinen schöner)
   s += line(x + 38, CEIL, x + 44, 226, 1.5) + line(x + w - 38, CEIL, x + w - 44, 226, 1.5);
   const tw = Math.max(84, d.name.length * 9.6 + 22);
-  if (ms >= 3) {
+  if (ms >= 21) {
+    s += '<g class="blink">' + rect(x + w / 2 - tw / 2 - 3, 212, tw + 6, 28, "rgba(122,208,255,.2)", { sw: 1.4, st: "#7ad0ff" }) + txt(x + w / 2, 232, d.name.toUpperCase(), 19, "#aef0ff", "middle", { stroke: "#2a5a9a", sw: 3 }) + "</g>" + star(x + w / 2 - tw / 2 - 9, 226, 7, "#ffe680", { sw: 1.3 }) + star(x + w / 2 + tw / 2 + 9, 226, 7, "#ffe680", { sw: 1.3 });
+  } else if (ms >= 15) {
+    s += rect(x + w / 2 - tw / 2 - 3, 212, tw + 6, 28, "#0e1630", { sw: 2.4 }) + '<g class="blink">' + txt(x + w / 2, 232, d.name.toUpperCase(), 19, W[1], "middle", { stroke: lt(W[1], .6), sw: 1 }) + "</g>" + circ(x + w / 2 - tw / 2 - 8, 226, 3, "#4affff", { nostroke: 1 }) + circ(x + w / 2 + tw / 2 + 8, 226, 3, "#ff4a8a", { nostroke: 1 });
+  } else if (ms >= 3) {
     s += rect(x + w / 2 - tw / 2 - 3, 212, tw + 6, 28, W[1], { sw: 2.4 }) + rect(x + w / 2 - tw / 2 + 1, 216, tw - 2, 20, "#fffdf2", { sw: 1.2 }) + txt(x + w / 2, 232, d.name.toUpperCase(), 18, W[1]);
     s += star(x + w / 2 - tw / 2 - 9, 226, 7, "#f2b705", { sw: 1.3 });
     if (ms >= 6) s += star(x + w / 2 + tw / 2 + 9, 226, 7, "#f2b705", { sw: 1.3 });
@@ -124,7 +128,7 @@ function deptCell(G, id, x) {
   if (ms >= 2) [x + 34, x + w - 34].forEach(lx => { s += line(lx, CEIL, lx, CEIL + 22, 1.4) + shp([[lx - 8, CEIL + 30], [lx + 8, CEIL + 30], [lx + 4, CEIL + 20], [lx - 4, CEIL + 20]], "#f6d84a", { sw: 1.6 }) + '<g class="blink">' + circ(lx, CEIL + 32, 3, "#fff6b0", { nostroke: 1 }) + "</g>"; });
   if (ms >= 4) { for (let k = 0; k < 8; k++) s += shp([[x + 8 + k * 17, CEIL + 3], [x + 22 + k * 17, CEIL + 3], [x + 15 + k * 17, CEIL + 14]], [W[1], "#f2b705", "#e0303c", "#3a9ae0"][k % 4], { sw: 1.1 }); s += ink("M" + (x + 8) + " " + (CEIL + 3) + "L" + (x + w - 8) + " " + (CEIL + 3), 1.4); }
   if (ms >= 5) s += rect(x + 22, FF - 20, w - 44, 14, W[1], { sw: 1.8, op: .85 }) + hatch(x + 22, FF - 20, w - 44, 14, 5, "#fff", 1, .45) + line(x + 30, FF - 13, x + w - 30, FF - 13, 1.2, "#f2b705", { one: 1 });
-  if (ms >= 6) s += rect(x + w - 30, FB - 12, 24, 12, "#b8803a", { sw: 1.6 }) + rect(x + w - 26, FB - 22, 16, 11, "#c8903a", { sw: 1.6 }) + ITEMS[id][tier](x + w - 18, FB - 22, .8);
+  if (ms >= 6) s += rect(x + w - 30, FB - 12, 24, 12, "#b8803a", { sw: 1.6 }) + rect(x + w - 26, FB - 22, 16, 11, "#c8903a", { sw: 1.6 }) + stageItem(id, ms, x + w - 18, FB - 22, .8);
   if (ms >= 7) for (let k = 0; k < 6; k++) s += '<g class="tw" style="animation-delay:' + (k * .4) + 's">' + star(x + 14 + hs(k, 3, 3) * (w - 28), CEIL + 40 + hs(k, 4, 4) * 90, 4, "#fff6b0", { sw: 0.8 }) + "</g>";
   if (ms >= 8) s += rect(x - 3, CEIL, 6, FB - CEIL, "#f2b705", { sw: 1.8 });
   if (ms >= 12) s += '<g class="beam" style="transform-origin:' + (x + w / 2) + 'px ' + CEIL + 'px">' + shp([[x + w / 2 - 3, CEIL], [x + w / 2 + 3, CEIL], [x + w / 2 + 30, FB], [x + w / 2 - 30, FB]], "rgba(255,246,200,.28)", { nostroke: 1 }) + "</g>";
@@ -318,6 +322,7 @@ function defs(G) {
   // Personal je Abteilung
   const hats = { obst: ["cap", "#4fa84a"], gemuese: ["cap", "#4fa84a"], back: ["baker"], kuehl: ["cap", "#3a7ae0"], tk: ["cap", "#4a6ae0"], fleisch: ["butcher"], fein: ["chef"], elektro: ["hard"] };
   DEPTS.forEach(d => { for (let i = 0; i < 4; i++) s += '<g id="s_' + d.id + i + '">' + figure(d.col, SKINS[(i + 1) % 4], HAIRS[(i * 2 + 1) % 6], PANTS[i % 4], 2, { apron: i % 2 ? "#fffdf2" : lt(d.col, .45), hat: hats[d.id][0], hatCol: hats[d.id][1], hairStyle: i % 3 }) + "</g>"; });
+  DEPTS.forEach(d => { for (let i = 0; i < 4; i++) s += '<g id="r_' + d.id + i + '">' + robot(d.col, i % 2, 0) + '</g><g id="z_' + d.id + i + '">' + robot(lt(d.col, .3), i % 2, 1) + '</g>'; });
   for (let i = 0; i < 8; i++) s += '<g id="k' + i + '">' + figure("#2f9a9a", SKINS[(i + 2) % 4], HAIRS[(i * 3) % 6], "#2a3a5a", 2, { apron: "#fffdf2", hairStyle: i % 3 }) + "</g>";
   for (let k = 0; k < 10; k++) s += '<g id="p' + k + '">' + pedTop(SHIRTS[k % 8], SKINS[(k * 3) % 4], HAIRS[(k * 5) % 6]) + "</g>";
   const kinds = [["car", 1], ["car", 1], ["van", 1], ["car", 1]];
@@ -344,7 +349,7 @@ function buildScene(G) {
   return back;
 }
 function sigOf(G) { return [G.li, G.W, G.spots, G.kn, G.ids.map(id => id + S.dept[id].lvl + ":" + S.dept[id].emp + (isAuto(id) ? "a" : "m")).join(","), G.ghost].join("|"); }
-function sigStruct(G) { return [G.li, G.W, G.spots, G.kn, G.ids.map(id => id + itemTier(id, S.dept[id].lvl) + ":" + msCount(S.dept[id].lvl) + (isAuto(id) ? "a" : "m") + "e" + S.dept[id].emp).join(","), G.ghost].join("|"); }
+function sigStruct(G) { return [G.li, G.W, G.spots, G.kn, G.ids.map(id => id + ":" + msCount(S.dept[id].lvl) + (isAuto(id) ? "a" : "m") + "e" + S.dept[id].emp).join(","), G.ghost].join("|"); }
 
 function mk(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || dyn).appendChild(e); return e; }
 function useEl(id, parent) { const e = document.createElementNS(NS, "use"); e.setAttribute("href", "#" + id); e.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#" + id); (parent || dyn).appendChild(e); return e; }
@@ -361,7 +366,7 @@ function rebuild() {
   dyn = svg.querySelector("#dyn"); R.staffG = svg.querySelector("#staff"); R.popG = svg.querySelector("#pop");
   R.vis.length = 0; R.coins.length = 0; R.pops.length = 0; R.amb.length = 0; R.stf = [];
   // Personal
-  G.ids.forEach(id => { const dd = S.dept[id], x0 = G.cellX(id); for (let i = 0; i < dd.emp; i++) { const e = useEl("s_" + id + i, R.staffG); const bx = x0 + 28 + i * 31, by = 348; e.setAttribute("transform", "translate(" + bx + " " + by + ")"); R.stf.push({ e, x: bx, y: by, id, ph: i * 1.3 }); } });
+  G.ids.forEach(id => { const dd = S.dept[id], x0 = G.cellX(id); for (let i = 0; i < dd.emp; i++) { const m2 = msCount(dd.lvl), e = useEl((m2 >= 21 ? "z_" : m2 >= 15 ? "r_" : "s_") + id + i, R.staffG); const bx = x0 + 28 + i * 31, by = 348; e.setAttribute("transform", "translate(" + bx + " " + by + ")"); R.stf.push({ e, x: bx, y: by, id, ph: i * 1.3 }); } });
   for (let i = 0; i < G.kn; i++) { const x = G.kx + 30 + i * 46, e = useEl("k" + i, R.staffG); e.setAttribute("transform", "translate(" + x + " 360)"); R.stf.push({ e, x, y: 360, kas: true, ph: i }); }
   R.cnt = {}; setTimeout(() => { if (R.G === G) warmStart(); }, 0); R.parkedKey = ""; R.pk = null; R.vipE = null;
 }

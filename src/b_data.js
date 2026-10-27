@@ -3,7 +3,7 @@
 const TESTMODUS = true; // true: €- und Werbe-Buttons gewähren sofort (kein echtes Bezahlen)
 
 // Meilensteine: ab diesen Stufen verdoppelt sich der Preis
-const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 900, 1000];
+const MILESTONES = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 900, 1000, 1250, 1500, 1750, 2000, 2250, 2500, 2750, 3000]; // 23 Meilensteine = 24 Aussehen
 const LVL_GROWTH = 1.09;      // Kostenwachstum pro Stufe
 const PROC_GROWTH = 1.32;     // Kostenwachstum "Verarbeiten"
 const CAR_DWELL = 55;         // Sekunden, die ein Auto parkt
@@ -14,13 +14,13 @@ const MGR_MAX = 10;
 const LOCS = [
   { id: "kiosk", name: "Kiosk am Weg", desc: "Ein kleiner Stand mit Schotterplatz. Hier fängt alles an.", cost: 0, mult: 1, maxLvl: 100, maxPark: 3, maxAd: 14, maxKasse: 2, stock: 100,
     ground: "#cfe3a0", ground2: "#bcd78c", lot: "#d8c9a0", lotLine: "#a89870", wall: "#c98a5a", roof: "#b8473a", floor: "#f3e2a0", floor2: "#ead58a", sign: "KIOSK" },
-  { id: "dorf", name: "Dorfladen", desc: "Der Laden im Ortskern mit Markise und Backstube.", cost: 600000, mult: 3, maxLvl: 250, maxPark: 5, maxAd: 30, maxKasse: 3, stock: 150,
+  { id: "dorf", name: "Dorfladen", desc: "Der Laden im Ortskern mit Markise und Backstube.", cost: 600000, mult: 3, maxLvl: 400, maxPark: 5, maxAd: 30, maxKasse: 3, stock: 150,
     ground: "#d9e8a8", ground2: "#c6dc94", lot: "#c9c4b4", lotLine: "#f7efd6", wall: "#e6b86a", roof: "#c0392b", floor: "#f6ead0", floor2: "#eadcb8", sign: "DORFLADEN" },
-  { id: "vorort", name: "Vorstadtsupermarkt", desc: "Supermarkt am Stadtrand mit Kühltheke und großem Parkplatz.", cost: 1.5e9, mult: 8, maxLvl: 400, maxPark: 8, maxAd: 60, maxKasse: 5, stock: 200,
+  { id: "vorort", name: "Vorstadtsupermarkt", desc: "Supermarkt am Stadtrand mit Kühltheke und großem Parkplatz.", cost: 1.5e9, mult: 8, maxLvl: 900, maxPark: 8, maxAd: 60, maxKasse: 5, stock: 200,
     ground: "#c8dfa0", ground2: "#b7d28c", lot: "#9a9fb0", lotLine: "#fffdf2", wall: "#e0a070", roof: "#6a7aa8", floor: "#f2e4dc", floor2: "#e6d4c8", sign: "MARKT" },
-  { id: "stadt", name: "Handelsstadt", desc: "Ein Einkaufszentrum mit Glasfassade und Parkhaus.", cost: 1.5e12, mult: 25, maxLvl: 600, maxPark: 12, maxAd: 100, maxKasse: 7, stock: 300,
+  { id: "stadt", name: "Handelsstadt", desc: "Ein Einkaufszentrum mit Glasfassade und Parkhaus.", cost: 1.5e12, mult: 25, maxLvl: 1800, maxPark: 12, maxAd: 100, maxKasse: 7, stock: 300,
     ground: "#b9c6d4", ground2: "#a9b8c8", lot: "#7d8498", lotLine: "#f2b705", wall: "#8fb8d8", roof: "#3f5f8f", floor: "#e4eef6", floor2: "#d3e2ee", sign: "SUPERMARKT" },
-  { id: "welt", name: "Weltkonzern", desc: "Das Imperium: Goldene Türme, Hubschrauberlandeplatz, VIP-Parkplatz.", cost: 5e15, mult: 120, maxLvl: 1000, maxPark: 20, maxAd: 200, maxKasse: 8, stock: 500,
+  { id: "welt", name: "Weltkonzern", desc: "Das Imperium: Goldene Türme, Hubschrauberlandeplatz, VIP-Parkplatz.", cost: 5e15, mult: 120, maxLvl: 3000, maxPark: 20, maxAd: 200, maxKasse: 8, stock: 500,
     ground: "#2f3a5c", ground2: "#27304f", lot: "#3b4468", lotLine: "#f2b705", wall: "#e8c04a", roof: "#f2b705", floor: "#fff4cf", floor2: "#f6e4a0", sign: "WELT-KONZERN" },
 ];
 
