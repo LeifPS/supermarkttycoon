@@ -5,7 +5,24 @@
 :root{--ink:#1d2742;--paper:#f7efd6;--paper2:#fffdf2;--yel:#f2b705;--red:#e0303c;--teal:#6fb8c2;--grn:#3fb04a;--blu:#3a7ae0;--pur:#7a4ad0;--f-display:"Caveat Brush",cursive;--f-body:"Patrick Hand",system-ui,sans-serif;--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 html,body{margin:0;height:100%;overflow:hidden;background:#cfe3a0;font-family:var(--f-body);color:var(--ink);font-size:16px;overscroll-behavior:none}
-#cv{position:fixed;inset:0;display:block}
+#world{position:fixed;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none;background:#cfe3a0;touch-action:pan-x pan-y}
+#world::-webkit-scrollbar{display:none}
+#sc{display:block}
+#staff,#dyn,#pop,#fore{pointer-events:none}
+.tp{pointer-events:all;cursor:pointer}
+.cb{animation:none}
+.cell{cursor:pointer}
+.tw{animation:tw 2.4s infinite alternate}@keyframes tw{to{opacity:.15}}
+.cl{animation:cl linear infinite}@keyframes cl{from{transform:translateX(-120px)}to{transform:translateX(160px)}}
+.sun{transform-origin:150px 74px;animation:spin 40s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.blink{animation:bl 2.6s infinite}@keyframes bl{0%,88%{opacity:1}94%{opacity:.75}}
+.tv{animation:tv 2.2s infinite steps(2)}@keyframes tv{50%{opacity:.55}}
+.fire{transform-box:fill-box;transform-origin:50% 100%;animation:fire .5s infinite alternate}@keyframes fire{to{transform:scale(1.08,1.18)}}
+.smoke{animation:smk 3s infinite}@keyframes smk{0%{transform:translateY(8px);opacity:0}30%{opacity:1}100%{transform:translateY(-20px);opacity:0}}
+.tapme>g{animation:tm .7s infinite alternate}@keyframes tm{to{transform:translateY(-4px)}}
+.rotor{transform-box:fill-box;transform-origin:50% 50%;animation:rt .25s linear infinite}@keyframes rt{to{transform:scaleX(-1)}}
+.beam{animation:bm 8s ease-in-out infinite alternate}.beam2{animation:bm 11s ease-in-out infinite alternate-reverse}@keyframes bm{from{transform:rotate(-16deg)}to{transform:rotate(16deg)}}
+.drip{animation:smk 2s infinite}
 button{font:inherit;color:inherit;cursor:pointer}
 svg.i{display:inline-block;vertical-align:middle;flex:none}
 #hud{position:fixed;left:0;right:0;top:0;z-index:40;padding:calc(var(--safe-t) + 8px) 8px 0;display:flex;gap:6px;align-items:flex-start;pointer-events:none}
@@ -71,6 +88,7 @@ svg.i{display:inline-block;vertical-align:middle;flex:none}
 .stats{display:flex;justify-content:space-between;margin-top:6px;text-align:center}
 .stats div{flex:1;font-family:var(--f-display);font-size:16px;line-height:1.1}
 .stats small{display:block;font-family:var(--f-display);font-size:11px;color:#e89a3a;letter-spacing:.3px}
+.mgr .btn{font-size:13px;padding:4px 4px}
 .mgr{background:#2a3458;border-radius:16px;padding:8px;display:flex;gap:8px;align-items:center;color:#fff;margin:8px 0;border:3px solid var(--ink)}
 .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .tile{background:#fffdf2;border:3px solid var(--ink);border-radius:16px;padding:6px 4px 8px;text-align:center;font-family:var(--f-display);display:flex;flex-direction:column;align-items:center;gap:3px;font-size:15px;line-height:1.05;box-shadow:0 3px 0 rgba(29,39,66,.4)}
@@ -117,9 +135,12 @@ svg.i{display:inline-block;vertical-align:middle;flex:none}
 .hint{font-size:13px;color:#7a6a40;text-align:center;margin-top:8px}
 .sc{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 10px}
 .pic{width:56px;height:56px;border-radius:50%;border:3px solid var(--ink);overflow:hidden;flex:none;background:var(--bg,#ccc)}
+.ib,.pill,.btn,.card,.tile,.chip,.bubble,.q,.boost,.arr,.x,.tab,.mc,.prod,.mgr,.ban,.toast,.plus,.dot,.pg,.tg,svg.i,.pic,.cl{filter:url(#wob)}
+.page .top,.sheet,.modal .box{filter:url(#wob)}
 </style>
 <body>
-<canvas id="cv"></canvas>
+<svg width="0" height="0" style="position:absolute"><filter id="wob" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+<div id="world"></div>
 <div id="hud"></div>
 <div id="quest"></div>
 <div class="side" id="sl"></div>

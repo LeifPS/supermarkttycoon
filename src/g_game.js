@@ -51,8 +51,10 @@ function act(a) {
     case "park": return done(buyPark(), "buy", "Nicht genug Geld");
     case "ad": return done(buyAd(), "buy", "Nicht genug Geld");
     case "kasse": return done(buyKasse(), "buy", "Nicht genug Geld");
-    case "loc": { const ok = buyLoc(); if (ok) { sfx("up"); toast("Neuer Standort: " + locOf().name); R.cust.length = 0; } return done(ok, "up", "Nicht genug Geld"); }
+    case "loc": { const ok = buyLoc(); if (ok) { sfx("up"); toast("Neuer Standort: " + locOf().name); resetScene(); } return done(ok, "up", "Nicht genug Geld"); }
     case "chest": { const r = openChest(); if (!r) { sfx("err"); toast("Schließe 5 Quests ab für die Truhe"); return; } sfx("pack"); packModal(r.cards, "Quest-Truhe: +" + r.r.gems + " 💎 +" + r.r.rp + " FP" + (r.r.gold ? " +1 Gold" : "")); renderAll(true); return; }
+    case "coin": { const v = collectCoin(+p[1]); if (v) { sfx("coin"); } return; }
+    case "vip": { const r = collectVip(); if (r) { sfx("claim"); toast("VIP-Kunde: +" + fmt(r.v) + " Geld" + (r.g ? " und 1 Edelstein" : "")); } return; }
     case "adboost": adBoost(); sfx("claim"); toast("Werbe-Boost aktiv (Test)"); renderAll(true); return;
     case "mcard": modal(mcardModal(p[1])); sfx("tap"); return;
     case "resel": UI.resSlot = +p[1]; UI.page = "resel"; sfx("tap"); renderAll(true); return;
@@ -80,23 +82,14 @@ function act(a) {
 }
 
 // ---------- Eingaben ----------
-function canvasTap(x, y) {
-  if (UI.page || UI.modal) return;
-  const id = hitStall(x, y);
-  if (id) { sfx("tap"); openDept(id); return; }
-  const w = screenToWorld(x, y), L = R.L;
-  if (L && w.y > L.lotTop - 6 && w.y < L.lotTop + L.prow * L.cellH + 6 && w.x > 6 && w.x < 354) { sfx("tap"); openPage("park"); return; }
-  if (UI.dept) { UI.dept = null; focusDept(null); renderAll(true); }
-}
 document.addEventListener("pointerdown", e => {
   auInit();
   const t = e.target.closest && e.target.closest("[data-a]");
-  UI.down = { a: t ? t.dataset.a : null, x: e.clientX, y: e.clientY, cv: e.target.id === "cv" }; UI.busy = true;
+  UI.down = { a: t ? t.dataset.a : null, x: e.clientX, y: e.clientY }; UI.busy = true;
 }, true);
 document.addEventListener("pointerup", e => {
   UI.busy = false; const d = UI.down; UI.down = null; if (!d) return;
   if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 14) return;
-  if (d.cv) { canvasTap(e.clientX, e.clientY); return; }
   if (!d.a) return;
   const t = document.elementFromPoint(e.clientX, e.clientY), el = t && t.closest("[data-a]");
   if (!el || el.dataset.a !== d.a) return;
@@ -110,7 +103,7 @@ let lastT = 0, accUI = 0, accSave = 0;
 function frame(ts) {
   const dt = Math.min(0.1, (ts - lastT) / 1000 || 0.016); lastT = ts;
   tick(dt);
-  drawFrame(dt, !!UI.page);
+  drawFrame(dt);
   accUI += dt; accSave += dt;
   if (questFlash) { toast(questFlash); sfx("quest"); questFlash = null; }
   if (accUI > 0.25 && !UI.busy) { accUI = 0; renderChrome(); renderLayer(false); }
@@ -127,7 +120,7 @@ addEventListener("pagehide", saveGame);
 function startGame() {
   const loaded = loadGame(); if (!loaded) newState();
   calc(false);
-  initRender($id("cv"));
+  initRender($id("world"));
   const o = loaded ? applyOffline() : null;
   renderAll(true);
   if (o) welcomeModal(o);

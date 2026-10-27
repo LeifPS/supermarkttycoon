@@ -46,7 +46,7 @@ function ico(n, s) { s = s || 24; return '<svg class="i" width="' + s + '" heigh
 // Porträt-Figuren (zufällige, aber feste Gesichter)
 function portrait(key, bg, size, shirt) {
   const h = i => hs(key.length * 31 + key.charCodeAt(0), key.charCodeAt(key.length - 1), i);
-  const skin = SKIN[(h(1) * 4) | 0], hair = ["#3a2a1a", "#8a4a1a", "#c8a050", "#1a1a1a", "#b0b0b8", "#a83a1a"][(h(2) * 6) | 0];
+  const skin = SKINS[(h(1) * 4) | 0], hair = ["#3a2a1a", "#8a4a1a", "#c8a050", "#1a1a1a", "#b0b0b8", "#a83a1a"][(h(2) * 6) | 0];
   const glasses = h(3) < 0.4, stache = h(4) < 0.3, long = h(5) < 0.5, hat = key === "back" || h(6) < 0.15;
   const sh = shirt || ["#3a7ae0", "#a83ad0", "#e0303c", "#2f9a9a", "#4fa84a"][(h(7) * 5) | 0];
   return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 60 60" style="display:block;background:' + bg + '" stroke="#1d2742" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">' +
@@ -73,7 +73,7 @@ function canPay(c) { return S.money >= c; }
 function priceBtn(act, cost, cls, extra) { return '<button class="btn ' + (cls || "green") + (canPay(cost) ? "" : " dis") + '" data-a="' + act + '">' + (extra || "") + ico("cash", 20) + "<span>" + fmtFull(cost) + "</span></button>"; }
 function gemBtn(act, g, cls, label) { return '<button class="btn ' + (cls || "yel") + (S.gems >= g ? "" : " dis") + '" data-a="' + act + '">' + (label ? "<span>" + label + "</span>" : "") + ico("gem", 20) + "<span>" + fmtFull(g) + "</span></button>"; }
 function toast(t) { const d = document.createElement("div"); d.className = "toast"; d.textContent = t; $id("toasts").appendChild(d); setTimeout(() => d.remove(), 2300); }
-function bar(v, max, txt, col) { return '<div class="pg"' + (col ? ' style="background:' + col + '"' : "") + '><i style="width:' + clamp(v / Math.max(1e-9, max) * 100, 0, 100) + '%"></i><b>' + (txt === undefined ? fmtFull(v) + "/" + fmtFull(max) : txt) + "</b></div>"; }
+function bar(v, max, txt, col) { return '<div class="pg"' + (col ? ' style="background:' + col + '"' : "") + '><i style="width:' + clamp(v / Math.max(1e-9, max) * 100, 0, 100) + '%"></i><b>' + (txt == null ? fmtFull(v) + "/" + fmtFull(max) : txt) + "</b></div>"; }
 function modal(html, noClose) { UI.modal = html; $id("modal").innerHTML = '<div class="modal" data-a="' + (noClose ? "noop" : "mclose") + '"><div class="box" data-a="noop">' + html + "</div></div>"; }
 function closeModal() { UI.modal = null; $id("modal").innerHTML = ""; }
 function accent(c) { return c; }
@@ -82,7 +82,7 @@ function accent(c) { return c; }
 function renderChrome() {
   const boosted = nowMs() < S.boost.until;
   $id("hud").innerHTML =
-    '<div class="pill">' + ico("cash", 30) + '<div class="col"><span>' + fmtFull(S.money) + "</span><small>" + ico("chart", 16) + " " + fmtFull(C.income) + " /min</small></div></div>" +
+    '<div class="pill">' + ico("cash", 30) + '<div class="col"><span>' + fmtFull(S.money) + "</span><small>" + ico("chart", 16) + " " + fmt(C.income) + " /min</small></div></div>" +
     '<div class="pill sm" data-a="open:lab">' + ico("rp", 22) + "<span>" + fmtFull(S.rp) + "</span></div>" +
     '<div class="pill sm" data-a="open:lab:ult">' + ico("gold", 22) + "<span>" + fmtFull(S.gold) + "</span></div>" +
     '<div class="pill gem" data-a="open:shop:gems">' + ico("gem", 26) + "<span>" + fmtFull(S.gems) + '</span><div class="plus">+</div></div>';
@@ -117,7 +117,7 @@ function deptSheet() {
     '<div class="mgr"><div class="pic" style="--bg:' + d.col + '">' + portrait(id, d.col, 56) + '</div><div style="flex:1"><div style="font-family:var(--f-display);font-size:20px">' + d.mgr + "</div>" +
     '<div class="row" style="font-size:14px"><span>' + ico("boost", 20) + " PREIS</span><b style='font-family:var(--f-display)'>x" + trimNum(MGR_MULT[m.lvl], 1) + " » x" + trimNum(next, 1) + "</b></div>" +
     '<div class="row" style="font-size:14px;color:' + (isAuto(id) ? "#6af07a" : "#cdd") + '"><span>' + ico("gear", 18) + " AUTOMATISIERUNG</span><i>" + (isAuto(id) ? "Aktiviert" : "Auf Stufe 2") + "</i></div></div>" +
-    '<div style="width:112px;text-align:center">' + bar(m.cards, m.lvl >= MGR_MAX ? 1 : cardsNeed(m.lvl), m.cards + "/" + (m.lvl >= MGR_MAX ? "MAX" : cardsNeed(m.lvl)), "#4a4a9a") + '<button class="btn blue' + (canUpMgr(id) ? "" : " dis") + ' sm" style="margin-top:4px;width:100%" data-a="mup:' + id + '">VERBESSERN<br>' + ico("card", 16) + " " + cardsNeed(m.lvl) + " " + ico("rp", 16) + " " + mgrRpCost(m.lvl) + "</button></div></div>" +
+    '<div style="width:128px;text-align:center">' + bar(m.cards, m.lvl >= MGR_MAX ? 1 : cardsNeed(m.lvl), m.cards + "/" + (m.lvl >= MGR_MAX ? "MAX" : cardsNeed(m.lvl)), "#4a4a9a") + '<button class="btn blue' + (canUpMgr(id) ? "" : " dis") + ' sm" style="margin-top:4px;width:100%" data-a="mup:' + id + '">VERBESSERN<br>' + ico("card", 16) + " " + cardsNeed(m.lvl) + " " + ico("rp", 16) + " " + mgrRpCost(m.lvl) + "</button></div></div>" +
     '<div class="chips">' + [1, 10, 100, 0].map(x => '<button class="chip' + (S.mode === x ? " on" : "") + '" data-a="mode:' + x + '">' + (x ? "x" + x : "Max") + "</button>").join("") + "</div>" +
     '<div class="tiles">' +
     '<div class="tile">' + ico("person", 38) + "MITARBEITER<br>+1" + (dd.emp >= 4 ? '<div class="btn green wide dis" style="background:#3fc05a">MAX.</div>' : priceBtn("hire:" + id, hireCost(id), "green").replace('class="btn', 'class="btn wide')) + "</div>" +
@@ -172,6 +172,20 @@ function pageMap() {
   return pageWrap("map", "STANDORTE", "#3a5ce0", b);
 }
 function locThumb(i) {
-  const l = LOCS[i], A = LAY[i], w = 190, k = w / 360;
-  return '<svg width="' + w + '" height="90" viewBox="0 0 360 170" stroke="#1d2742" stroke-width="3" stroke-linejoin="round"><rect x="' + (A.bx) + '" y="40" width="' + A.bw + '" height="90" rx="8" fill="' + l.wall + '"/><rect x="' + (A.bx - 8) + '" y="30" width="' + (A.bw + 16) + '" height="26" rx="5" fill="' + l.roof + '"/><rect x="' + (A.bx + 8) + '" y="62" width="' + (A.bw - 16) + '" height="60" fill="' + l.floor + '"/><rect x="10" y="136" width="340" height="30" rx="6" fill="' + l.lot + '"/>' + [0, 1, 2, 3, 4, 5].map(q => '<rect x="' + (24 + q * 52) + '" y="144" width="28" height="14" rx="4" fill="' + CAR_COLS[(q + i * 2) % 10] + '"/>').join("") + (i === 4 ? '<circle cx="180" cy="14" r="12" fill="#fffdf2"/>' : "") + "</svg>";
+  const l = LOCS[i], k = i;
+  let o = '<rect x="0" y="0" width="360" height="170" fill="url(#thsky' + i + ')"/>';
+  const sky = SKY[i];
+  const g = '<defs><linearGradient id="thsky' + i + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + sky[0] + '"/><stop offset="1" stop-color="' + sky[1] + '"/></linearGradient></defs>';
+  o += rect(0, 100, 360, 70, ["#cfe3a0", "#d9e8a8", "#c8dfa0", "#a8b4c4", "#232c50"][i], { sw: 0, nostroke: 1 });
+  if (i === 4) for (let q = 0; q < 14; q++) o += rect(q * 26, 20 + (q % 3) * 14, 20, 90 - (q % 3) * 14, "#2a3a6a", { sw: 1.6 });
+  if (i === 3) for (let q = 0; q < 9; q++) o += rect(q * 40, 30 + (q % 3) * 12, 32, 80 - (q % 3) * 12, "#98a8c4", { sw: 1.6 });
+  const bw = [220, 250, 290, 310, 320][i], bx = (360 - bw) / 2, top = [70, 56, 58, 28, 22][i];
+  o += rect(bx, top + 14, bw, 112 - top, l.wall, { sw: 2.6 }) + rect(bx + 8, 78, bw - 16, 46, l.floor, { sw: 1.8 });
+  o += i === 1 ? shp([[bx - 8, top + 18], [bx + bw + 8, top + 18], [bx + bw - 30, top - 8], [bx + 30, top - 8]], l.roof, { sw: 2.4 }) : rect(bx - 8, top, bw + 16, 22, l.roof, { sw: 2.4 });
+  if (i === 0) for (let q = 0; q < 8; q++) o += rect(bx - 8 + q * (bw + 16) / 8, top, (bw + 16) / 16, 22, "#fffdf2", { sw: 0, nostroke: 1 });
+  o += rect(bx + bw / 2 - 52, top - 8, 104, 22, "#fffdf2", { sw: 2 }) + txt(bx + bw / 2, top + 9, l.sign, 17, INK);
+  for (let q = 0; q < Math.min(8, 2 + i * 2); q++) o += rect(bx + 14 + q * ((bw - 40) / Math.min(8, 2 + i * 2)), 86, 16, 32, [DEPTS[q % 8].col2][0], { sw: 1.6 });
+  o += rect(10, 134, 340, 30, l.lot, { sw: 2 });
+  for (let q = 0; q < 7; q++) o += '<g transform="translate(' + (36 + q * 46) + ' 149) scale(.75)">' + carTop(CAR_COLS[(q + i * 3) % 10], "car") + "</g>";
+  return '<svg width="100%" height="96" viewBox="0 0 360 170" preserveAspectRatio="xMidYMid slice" style="display:block">' + g + o + "</svg>";
 }
